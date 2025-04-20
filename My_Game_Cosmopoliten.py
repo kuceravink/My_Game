@@ -18,6 +18,10 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('My_first_Gaame')
 clock = pygame.time.Clock()
 
+background = pygame.image.load('C:\\Users\\kucer\\OneDrive\\Desktop\\My_Game\\bg_space_seamless.png').convert()
+background = pygame.transform.scale(background, (480, 600))
+background_rect = background.get_rect()
+
 
 def load_gif(path):
     gif = Image.open(path)  # Открываем GIF с помощью Pillow
@@ -38,7 +42,7 @@ def load_gif(path):
 
 
 
-#инициализируем класс героя, он имеет image и rect(это его вид, а другое это прямоугольник для отслеживания)
+
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
@@ -51,13 +55,15 @@ class Player(pygame.sprite.Sprite):
 
         # Начальное изображение
         self.image = self.frames[self.current_frame]
-        self.image.set_colorkey(WHITE)  # Удаляем фон если нужно
+        self.image.set_colorkey(WHITE)
         self.size_ = (52, 52)
         self.image = pygame.transform.scale(self.image, self.size_)
         self.rect = self.image.get_rect()
+        self.radius = 25
         self.rect.centerx = WIDTH / 2
         self.rect.bottom = HEIGHT - 10
         self.speedx = 0
+
 
     def update(self):
         # Движение
@@ -103,22 +109,64 @@ class Player(pygame.sprite.Sprite):
 class Mobs(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.image.load('C:\\Users\\kucer\\Downloads\\Layered Rock.png')
-        self.size_ = (38, 38)
-        self.image = pygame.transform.scale(self.image, self.size_ )
+        # Загружаем изображение
+        self.image_orig = pygame.image.load('C:\\Users\\kucer\\Downloads\\Layered Rock.png')
+        
+        # Генерируем случайный размер в пределах заданного диапазона
+        min_size = 25  # минимальный размер
+        max_size = 55  # максимальный размер
+        size = random.randrange(min_size, max_size)
+        self.size_ = (size, size)
+        
+        # Масштабируем изображение
+        self.image_orig = pygame.transform.scale(self.image_orig, self.size_)
+        self.image = self.image_orig.copy()
         self.rect = self.image.get_rect()
+        
+        # Радиус для коллизий (можно оставить пропорциональным или тоже сделать случайным)
+        self.radius = int(self.rect.width * .85 / 2)
+        
+        # Начальная позиция
         self.rect.x = random.randrange(WIDTH - self.rect.width)
         self.rect.y = random.randrange(-100, -40)
+        
+        # Скорости (можно сделать зависимыми от размера - маленькие быстрее)
         self.speedy = random.randrange(2, 5)
         self.speedx = random.randrange(-2, 2)
+        
+        # Вращение
+        self.rot = 0
+        self.rot_speed = random.randrange(-8, 8)
+        self.last_update = pygame.time.get_ticks()
+
+    def rotate(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_update > 50:
+            self.last_update = now
+            self.rot = (self.rot + self.rot_speed) % 360
+            new_image = pygame.transform.rotate(self.image_orig, self.rot)
+            old_center = self.rect.center
+            self.image = new_image
+            self.rect = self.image.get_rect()
+            self.rect.center = old_center
 
     def update(self):
+        self.rotate()
         self.rect.y += self.speedy
         self.rect.x += self.speedx
         if self.rect.top > HEIGHT + 10 or self.rect.left < -25 or self.rect.right > WIDTH + 20:
+            # При респавне тоже генерируем новый случайный размер
+            size = random.randrange(25, 55)
+            self.size_ = (size, size)
+            self.image_orig = pygame.transform.scale(pygame.image.load('C:\\Users\\kucer\\Downloads\\Layered Rock.png'), self.size_)
+            self.image = self.image_orig.copy()
+            self.rect = self.image.get_rect()
+            self.radius = int(self.rect.width * .85 / 2)
+            
             self.rect.x = random.randrange(WIDTH - self.rect.width)
             self.rect.y = random.randrange(-100, -40)
             self.speedy = random.randrange(2, 5)
+            self.speedx = random.randrange(-2, 2)
 
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y):
@@ -168,12 +216,13 @@ while running:
 
 
     #проверка не ударил ли моб игрока
-    hits = pygame.sprite.spritecollide(player, mobs, False)
+    hits = pygame.sprite.spritecollide(player, mobs, False, pygame.sprite.collide_circle)
     if hits:
         running = False
 
     # Рендеринг
     screen.fill(BLACK)
+    screen.blit(background, background_rect)
     #отрисовываем все спрайты
     all_sprites.draw(screen)
     # поворачиваем экран к пользователю(мы отрисовали только заднюю сторону)
