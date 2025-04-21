@@ -1,6 +1,6 @@
 import pygame
 import random
-import os 
+from os import path
 from PIL import Image, ImageSequence
 
 
@@ -18,6 +18,12 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('My_first_Gaame')
 clock = pygame.time.Clock()
 
+snd_dir = path.join(path.dirname(__file__), 'music')
+shoot_m = pygame.mixer.Sound(path.join(snd_dir, 'Laser.wav'))
+expl = pygame.mixer.Sound(path.join(snd_dir, 'explosion01.wav'))
+expl.set_volume(0.09)
+pygame.mixer.music.load(path.join(snd_dir, 'hull_et_belle.ogg'))
+pygame.mixer.music.set_volume(0.4)
 background = pygame.image.load('C:\\Users\\kucer\\OneDrive\\Desktop\\My_Game\\bg_space_seamless.png').convert()
 background = pygame.transform.scale(background, (480, 600))
 background_rect = background.get_rect()
@@ -38,10 +44,14 @@ def load_gif(path):
 
     return frames  # Возвращаем список кадров
 
+font_name = pygame.font.match_font('arial')
 
-
-
-
+def draw_text(surf, text, size, x, y):
+    font = pygame.font.Font(font_name, size)
+    text_surface = font.render(text, True, WHITE)
+    text_rect = text_surface.get_rect()
+    text_rect.midtop = (x, y)
+    surf.blit(text_surface, text_rect)
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
@@ -104,6 +114,7 @@ class Player(pygame.sprite.Sprite):
         bullet = Bullet(self.rect.centerx, self.rect.top)
         all_sprites.add(bullet)
         bullets.add(bullet)
+        shoot_m.play()
 
 
 class Mobs(pygame.sprite.Sprite):
@@ -192,7 +203,8 @@ for i in range(5):
     all_sprites.add(m)
     mobs.add(m)
 
-
+score = 0
+pygame.mixer.music.play(loops=-1)
 running = True
 while running:
     #контролируем уровень кадров в секунду
@@ -211,6 +223,8 @@ while running:
     hits = pygame.sprite.groupcollide(mobs, bullets, True, True)
     for hit in hits:
         m = Mobs()
+        expl.play()
+        score += 50 - hit.radius
         all_sprites.add(m)
         mobs.add(m)
 
@@ -225,6 +239,7 @@ while running:
     screen.blit(background, background_rect)
     #отрисовываем все спрайты
     all_sprites.draw(screen)
+    draw_text(screen, str(score), 25 , WIDTH / 2, 10)
     # поворачиваем экран к пользователю(мы отрисовали только заднюю сторону)
     pygame.display.flip()
 
