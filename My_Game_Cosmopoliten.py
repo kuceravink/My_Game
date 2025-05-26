@@ -2,6 +2,7 @@ import pygame
 import random
 from os import path
 from PIL import Image, ImageSequence
+import sys
 
 #480
 #600
@@ -12,6 +13,7 @@ FPS = 144
 WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
+LIGHT_BLUE = (173, 216, 230)
 
 pygame.init()
 pygame.mixer.init() 
@@ -20,9 +22,14 @@ pygame.display.set_caption('COSMOPOLITEN')
 clock = pygame.time.Clock()
 
 
+title_font = pygame.font.SysFont('Arial', 64, bold=True)
+button_font = pygame.font.SysFont('Arial', 32)
 
 img_dir = path.join(path.dirname(__file__), 'img')
 snd_dir = path.join(path.dirname(__file__), 'music')
+bust_img = {}
+bust_img['shield'] = pygame.image.load(path.join(img_dir, 'shield.png')).convert()
+bust_img['heart'] = pygame.image.load(path.join(img_dir, 'heart pixel art 16x16.png')).convert()
 shoot_m = pygame.mixer.Sound(path.join(snd_dir, 'Laser.wav'))
 expl = pygame.mixer.Sound(path.join(snd_dir, 'explosion01.wav'))
 expl.set_volume(0.09)
@@ -50,7 +57,7 @@ for i in range(9):
     img = pygame.image.load(path.join(img_dir, name_img)).convert()
     img.set_colorkey(BLACK)
     blast['player'].append(img)
-    
+
 def load_gif(path):
     gif = Image.open(path)  # Открываем GIF с помощью Pillow
     frames = []  # Сюда будем складывать кадры в формате Pygame
@@ -92,6 +99,7 @@ def draw_hearts(surf, x, y, heart, img):
         img_rect.x = x + 30 * i
         img_rect.y = y
         surf.blit(img, img_rect)
+
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
@@ -281,10 +289,26 @@ class Blast(pygame.sprite.Sprite):
                 self.rect = self.image.get_rect()
                 self.rect.center = center
 
+class Bust(pygame.sprite.Sprite):
+    def __init__(self, center):
+        pygame.sprite.Sprite.__init__(self)
+        self.type = 'heart' #заглушка!!!!!!
+        self.image = bust_img[self.type]
+        self.rect = self.image.get_rect()
+        self.image.set_colorkey(BLACK)
+        self.rect.center = center
+        self.speedy = 2
+
+    def update(self):
+        self.rect.y += self.speedy
+        if self.rect.top > HEIGHT:
+            self.kill()
+
 all_sprites = pygame.sprite.Group()
 mobs = pygame.sprite.Group()
 player = Player()
 bullets = pygame.sprite.Group()
+bust = pygame.sprite.Group()
 all_sprites.add(player)
 
 def mobspawn():
@@ -325,6 +349,12 @@ while running:
         if score >= next_threshold:
             mobspawn()  
             mx_score = next_threshold
+        if random.random() > 0.9:
+            blst = Bust(hit.rect.center)
+            all_sprites.add(blst)
+            bust.add(blst)
+
+    
         
 
     #проверка не ударил ли моб игрока
@@ -340,12 +370,21 @@ while running:
             player.hearts -= 1
             player.health = 100
 
+
     if player.hearts == 0:
         running = False
 
     if not player.alive() and not Blast(player.rect.center, 'player').alive():
         running = False
 
+    hits = pygame.sprite.spritecollide(player, bust, True)
+    for hit in hits:
+        if hit.type == 'heart':
+            player.health += random.randrange(10, 30)
+        if player.health >= 100:
+            player.health = 100
+        if hit.type == 'shield':
+            pass
 
 
     # Рендеринг
