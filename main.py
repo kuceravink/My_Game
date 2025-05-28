@@ -15,11 +15,6 @@ BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
 LIGHT_BLUE = (173, 216, 230)
 
-MENU = 0
-GAME = 1
-GAME_OVER = 2
-game_state = MENU
-
 pygame.init()
 pygame.mixer.init() 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -105,63 +100,7 @@ def draw_hearts(surf, x, y, heart, img):
         img_rect.y = y
         surf.blit(img, img_rect)
 
-# Функции для работы с меню
-def draw_menu():
-    screen.blit(background, background_rect)
-    
-    # Название игры
-    title = title_font.render("COSMOPOLITEN", True, WHITE)
-    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 4))
-    
-    # Кнопка "Старт"
-    start_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50)
-    pygame.draw.rect(screen, LIGHT_BLUE, start_button, border_radius=10)
-    start_text = button_font.render("СТАРТ", True, BLACK)
-    screen.blit(start_text, (WIDTH // 2 - start_text.get_width() // 2, HEIGHT // 2 + 10))
-    
-    return start_button
 
-def draw_game_over(score):
-    screen.blit(background, background_rect)
-    
-    # Текст "Игра окончена"
-    game_over_text = title_font.render("ИГРА ОКОНЧЕНА", True, WHITE)
-    screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 4))
-    
-    # Счет
-    score_text = button_font.render(f"Счет: {score}", True, WHITE)
-    screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, HEIGHT // 3))
-    
-    # Кнопка "Рестарт"
-    restart_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50)
-    pygame.draw.rect(screen, LIGHT_BLUE, restart_button, border_radius=10)
-    restart_text = button_font.render("ЗАНОВО", True, BLACK)
-    screen.blit(restart_text, (WIDTH // 2 - restart_text.get_width() // 2, HEIGHT // 2 + 10))
-    
-    return restart_button
-
-def reset_game():
-    global all_sprites, mobs, bullets, bust, player, score
-    
-    # Очищаем все группы спрайтов
-    all_sprites = pygame.sprite.Group()
-    mobs = pygame.sprite.Group()
-    bullets = pygame.sprite.Group()
-    bust = pygame.sprite.Group()
-    
-    # Создаем нового игрока
-    player = Player()
-    all_sprites.add(player)
-    
-    # Создаем мобов
-    for i in range(5):
-        mobspawn()
-    
-    # Сбрасываем счет
-    score = 0
-    
-    # Запускаем музыку
-    pygame.mixer.music.play(loops=-1)
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
@@ -193,7 +132,7 @@ class Player(pygame.sprite.Sprite):
 
 
     def update(self):
-        if self.hides and pygame.time.get_ticks() - self.hide_time > 100:
+        if self.hides and pygame.time.get_ticks() - self.hide_time > 1000:
             self.hides = False
             self.rect.centerx = WIDTH / 2
             self.rect.bottom = HEIGHT - 10
@@ -390,97 +329,78 @@ while running:
     #контролируем уровень кадров в секунду
     clock.tick(FPS)
 
-    mouse_pos = pygame.mouse.get_pos()
-    mouse_clicked = False
-
     for event in pygame.event.get():
         # делаем возможноть закрыть окно крестиком
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  # Левая кнопка мыши
-                mouse_clicked = True
-    if game_state == MENU:
-        start_button = draw_menu()
-        if mouse_clicked and start_button.collidepoint(mouse_pos):
-            reset_game()
-            game_state = GAME
 
-    elif game_state == GAME:
-        #обновление
-        all_sprites.update()
 
-        hits = pygame.sprite.groupcollide(mobs, bullets, True, True)
-        for hit in hits:
-            m = Mobs()
-            expl.play()
-            score += 50 - hit.radius
-            all_sprites.add(m)
-            mobs.add(m) 
-            blst = Blast(hit.rect.center, 'bg')
+    #обновление
+    all_sprites.update()
+
+    hits = pygame.sprite.groupcollide(mobs, bullets, True, True)
+    for hit in hits:
+        m = Mobs()
+        expl.play()
+        score += 50 - hit.radius
+        all_sprites.add(m)
+        mobs.add(m) 
+        blst = Blast(hit.rect.center, 'bg')
+        all_sprites.add(blst)
+        mx_score = 0
+        next_threshold = mx_score + 500
+        if score >= next_threshold:
+            mobspawn()  
+            mx_score = next_threshold
+        if random.random() > 0.9:
+            blst = Bust(hit.rect.center)
             all_sprites.add(blst)
-            mx_score = 0
-            next_threshold = mx_score + 500
-            if score >= next_threshold:
-                mobspawn()  
-                mx_score = next_threshold
-            if random.random() > 0.9:
-                blst = Bust(hit.rect.center)
-                all_sprites.add(blst)
-                bust.add(blst)
+            bust.add(blst)
 
+    
         
-            
 
-        #проверка не ударил ли моб игрока
-        hits = pygame.sprite.spritecollide(player, mobs, True, pygame.sprite.collide_circle)
-        for hit in hits:
-            player.health -= hit.radius * 2
-            blst = Blast(hit.rect.center, 'sm')
-            all_sprites.add(blst)
-            mobspawn()
-            if player.health < 0:
-                all_sprites.add(Blast(player.rect.center, 'player'))
-                player.hide()
-                player.hearts -= 1
-                player.health = 100
-
+    #проверка не ударил ли моб игрока
+    hits = pygame.sprite.spritecollide(player, mobs, True, pygame.sprite.collide_circle)
+    for hit in hits:
+        player.health -= hit.radius * 2
+        blst = Blast(hit.rect.center, 'sm')
+        all_sprites.add(blst)
+        mobspawn()
+        if player.health < 0:
+            all_sprites.add(Blast(player.rect.center, 'player'))
+            player.hide()
+            player.hearts -= 1
+            player.health = 100
 
 
+    if player.hearts == 0:
+        running = False
 
-        if not player.alive() and not Blast(player.rect.center, 'player').alive():
-            running = False
+    if not player.alive() and not Blast(player.rect.center, 'player').alive():
+        running = False
 
-        if player.hearts == 0:
-            game_state = GAME_OVER
-
-        hits = pygame.sprite.spritecollide(player, bust, True)
-        for hit in hits:
-            if hit.type == 'heart':
-                player.health += random.randrange(10, 30)
-            if player.health >= 100:
-                player.health = 100
-            if hit.type == 'shield':
-                pass
+    hits = pygame.sprite.spritecollide(player, bust, True)
+    for hit in hits:
+        if hit.type == 'heart':
+            player.health += random.randrange(10, 30)
+        if player.health >= 100:
+            player.health = 100
+        if hit.type == 'shield':
+            pass
 
 
-        # Рендеринг
-        screen.fill(BLACK)
-        screen.blit(background, background_rect)
-        #отрисовываем все спрайты
-        all_sprites.draw(screen)
-        draw_text(screen, str(score), 18, WIDTH / 2, 10)
-        draw_health(screen, 5, 5, player.health)
-        draw_hearts(screen, WIDTH - 100, 5, player.hearts, heart)
-    elif game_state == GAME_OVER:
-        restart_button = draw_game_over(score)
-        if mouse_clicked and restart_button.collidepoint(mouse_pos):
-            reset_game()
-            game_state = GAME
+    # Рендеринг
+    screen.fill(BLACK)
+    screen.blit(background, background_rect)
+    #отрисовываем все спрайты
+    all_sprites.draw(screen)
+    draw_text(screen, str(score), 18, WIDTH / 2, 10)
+    draw_health(screen, 5, 5, player.health)
+    draw_hearts(screen, WIDTH - 100, 5, player.hearts, heart)
     # поворачиваем экран к пользователю(мы отрисовали только заднюю сторону)
     pygame.display.flip()
 
 
 
 pygame.quit()
-
