@@ -34,7 +34,7 @@ img_dir = path.join(path.dirname(__file__), 'img')
 snd_dir = path.join(path.dirname(__file__), 'music')
 bust_img = {}
 bust_img['shield'] = pygame.image.load(path.join(img_dir, 'shield.png')).convert()
-bust_img['heart'] = pygame.image.load(path.join(img_dir, 'heart pixel art 16x16.png')).convert()
+bust_img['heart'] = pygame.image.load(path.join(img_dir, 'heart.png')).convert()
 shoot_m = pygame.mixer.Sound(path.join(snd_dir, 'Laser.wav'))
 expl = pygame.mixer.Sound(path.join(snd_dir, 'explosion01.wav'))
 expl.set_volume(0.09)
@@ -383,7 +383,7 @@ for i in range(5):
 
 score = 0
 pygame.mixer.music.play(loops=-1)
-running = True
+running = True 
 
 
 while running:
